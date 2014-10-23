@@ -55,6 +55,11 @@ removeFreeNode(node_t* freeNode)
 	freeNode->prev = NULL;
 }
 
+//
+// Spits a region of memory to the size requested.
+// This prevents waste. Simply splits this free
+// node into two seperate free nodes and updates.
+//
 void
 split(node_t* memBlock, node_t* newNode, int size)
 {
@@ -119,29 +124,51 @@ Mem_Init(int sizeOfRegion)
 void
 *Mem_Alloc(int size)
 {
-	node_t *tmp;
-	struct __header_t header;
+	node_t *tmp = NULL, *newNode = NULL;
+	header_t *allocNode;
 
   int byteAlligned = size / 8;
+	int requestedNodeSize;
+	void *freeSpaceAddr;
+
   if (size % 8 != 0)
     byteAlligned++;
 
   byteAlligned = byteAlligned * 8;
 
+	requestedNodeSize = byteAlligned + (int) sizeof(header_t);
 
-	if (byteAlligned + (int) sizeof(header_t) > freeSpace)
+	if (requestedNodeSize > freeSpace)
 		return NULL;
 
 	tmp = head;
 	do 
 	{
-		if(tmp->size >= (byteAlligned + (int) sizeof(header_t)))
+		if (tmp->size > requestedNodeSize)
 		{
-			//header 
-		}	
-	} while(tmp->next != NULL);
+			split(tmp, newNode, requestedNodeSize); //Sets new Node to the new split node.
+		}
+		else if (tmp->size == requestedNodeSize)
+		{
+			newNode = tmp;
+		}
+
+	} while(tmp->next != NULL && newNode != NULL);
 		
-	return NULL;
+	if(newNode == NULL)
+	{
+		return NULL;
+	}
+
+	/* Remove the node from the free list and convert it. */
+	removeFreeNode(newNode);
+
+	allocNode = (header_t*) newNode;
+	allocNode->size = requestedNodeSize;
+	allocNode->magic = 1234567;
+
+	freeSpaceAddr = allocNode + (int) sizeof(header_t);
+	return freeSpaceAddr;
 }
 
 int
