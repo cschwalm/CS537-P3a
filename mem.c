@@ -21,7 +21,6 @@ typedef struct __header_t {
 } header_t;
 
 node_t* head = NULL;
-int freeSpace = 0;
 
 //
 // Modifies the free list so that a new mem node can be added.
@@ -138,7 +137,7 @@ void
 
 	requestedNodeSize = byteAlligned + (int) sizeof(header_t);
 
-	if (requestedNodeSize > freeSpace)
+	if (requestedNodeSize > Mem_Available())
 		return NULL;
 
 	tmp = head;
@@ -157,7 +156,7 @@ void
 		
 	if(newNode == NULL)
 	{
-		return NULL;
+		return NULL; //No free space found.
 	}
 
 	/* Remove the node from the free list and convert it. */
@@ -167,7 +166,7 @@ void
 	allocNode->size = requestedNodeSize;
 	allocNode->magic = 1234567;
 
-	freeSpaceAddr = allocNode + (int) sizeof(header_t);
+	freeSpaceAddr = (void*) (allocNode + (int) sizeof(header_t));
 	return freeSpaceAddr;
 }
 
@@ -175,4 +174,23 @@ int
 Mem_Free(void *ptr)
 {
 	return 0;
+}
+
+//
+// This function traverses the free list
+// and counts the amount of space available.
+//
+int
+Mem_Available()
+{
+	node_t *tmp = head;
+	int freeSpace = 0;
+
+	while (tmp != NULL)
+	{
+		freeSpace += tmp->size;
+		tmp = tmp->next;
+	}
+
+	return freeSpace;
 }
