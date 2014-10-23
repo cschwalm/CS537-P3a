@@ -31,7 +31,7 @@ void
 removeFreeNode(node_t* freeNode)
 {
 	
-	node_t* prevNode, nextNode;
+	node_t *prevNode, *nextNode;
 
 	prevNode = freeNode->prev;
 	nextNode = freeNode->next;
@@ -58,17 +58,33 @@ removeFreeNode(node_t* freeNode)
 void
 split(node_t* memBlock, node_t* newNode, int size)
 {
-	newNode = NULL;
-	if (memBlock->size <= size + sizeof(node_t))
+	if (memBlock->size <= (int) (size + sizeof(node_t)))
 		return;
 
 	newNode = (node_t*) (memBlock + sizeof(node_t) + size);
+
+	/* Set/Update Reference Pointers */
+	newNode->next = memBlock->next;
+	newNode->prev = memBlock;
+
+	/* Next Node Might Be Null */
+	if (memBlock->next->prev != NULL)
+	{
+		memBlock->next->prev = newNode;
+	}
+	memBlock->next = newNode;
+
+	/* Set/Update Size Members */
+	newNode->size = memBlock->size - size; //Set the shard size
+	memBlock->size = size; //Update the selection node size.
 }
 
 int
 Mem_Init(int sizeOfRegion)
 {
 	int memToInit = 0;
+	void* ptr;
+
 	if (sizeOfRegion<= 0 || head == NULL)
 		return -1;
 	
@@ -83,11 +99,13 @@ Mem_Init(int sizeOfRegion)
 	int fd = open("/dev/zero", O_RDWR);
 	
 	// sizeOfRegion (in bytes) needs to be evenly divisible by the page size
-	head = mmap(NULL, sizeOfRegion, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+	ptr = mmap(NULL, sizeOfRegion, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
 	if (ptr == MAP_FAILED) 
 	{
 		return -1; 
 	}
+
+	head = (node_t*) ptr;
 	
 	head->size = sizeOfRegion - sizeof(node_t);
 	head->next = NULL;
@@ -101,7 +119,7 @@ Mem_Init(int sizeOfRegion)
 void
 *Mem_Alloc(int size)
 {
-	node_t tmp;
+	node_t *tmp;
 	struct __header_t header;
 
   int byteAlligned = size / 8;
@@ -111,15 +129,15 @@ void
   byteAlligned = byteAlligned * 8;
 
 
-	if (byteAlligned + sizeof(header_t) > freeSpace)
+	if (byteAlligned + (int) sizeof(header_t) > freeSpace)
 		return NULL;
 
 	tmp = head;
 	do 
 	{
-		if(tmp->size >= (byteAlligned + sizeof(header_t)))
+		if(tmp->size >= (byteAlligned + (int) sizeof(header_t)))
 		{
-			header = 
+			//header 
 		}	
 	} while(tmp->next != NULL);
 		
@@ -129,6 +147,5 @@ void
 int
 Mem_Free(void *ptr)
 {
-
+	return 0;
 }
-
