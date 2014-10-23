@@ -1,5 +1,6 @@
 #include "stddef.h"
 #include "stdlib.h"
+#include "stdio.h"
 #include "sys/types.h"
 #include "sys/stat.h"
 #include "fcntl.h"
@@ -21,6 +22,7 @@ typedef struct __header_t {
 } header_t;
 
 node_t* head = NULL;
+const int MAGIC_CONST = 1234567;
 
 //
 // Modifies the free list so that a new mem node can be added.
@@ -72,14 +74,14 @@ split(node_t* memBlock, node_t* newNode, int size)
 	newNode->prev = memBlock;
 
 	/* Next Node Might Be Null */
-	if (memBlock->next->prev != NULL)
+	if (memBlock->next != NULL)
 	{
 		memBlock->next->prev = newNode;
 	}
 	memBlock->next = newNode;
 
 	/* Set/Update Size Members */
-	newNode->size = memBlock->size - size; //Set the shard size
+	newNode->size = memBlock->size - size - (int) sizeof(node_t); //Set the shard size
 	memBlock->size = size; //Update the selection node size.
 }
 
@@ -164,7 +166,7 @@ void
 
 	allocNode = (header_t*) newNode;
 	allocNode->size = requestedNodeSize;
-	allocNode->magic = 1234567;
+	allocNode->magic = MAGIC_CONST;
 
 	freeSpaceAddr = (void*) (allocNode + (int) sizeof(header_t));
 	return freeSpaceAddr;
@@ -193,4 +195,30 @@ Mem_Available()
 	}
 
 	return freeSpace;
+}
+
+//
+// Used to debug the program.
+// Prints out the nodes in the free list.
+//
+void
+Mem_Dump()
+{
+	int nodeCnt = 0;
+	node_t * node = head;
+	const char *seperator = " => ";
+
+	while (node != NULL)
+	{
+		if (nodeCnt > 0)
+		{
+			printf("%s", seperator);
+		}
+
+		printf("[Node #: %i, Size: %i]", nodeCnt, node->size);
+		nodeCnt++;
+		node = node->next;
+	}
+
+	printf("\n");
 }
