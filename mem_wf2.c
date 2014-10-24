@@ -179,6 +179,9 @@ void
 	node_t *tmp = NULL, *newNode = NULL;
 	header_t *allocNode;
 
+	//if (size != 16 || size != 80 || size != 256)
+	//	return NULL;
+
   int byteAlligned = size / 8;
 	int requestedNodeSize;
 	void *freeSpaceAddr;
