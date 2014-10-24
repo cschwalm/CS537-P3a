@@ -44,6 +44,7 @@ removeFreeNode(node_t* freeNode)
 	else
 	{
 		/* Update the global head pointer. This is the start. */
+		//fprintf(stderr, "updating global head pointer\n");
 		head = nextNode;
 	}
 
@@ -110,8 +111,17 @@ split(node_t** memBlock_i, node_t** newNode_i, int size)
 {
 	node_t* memBlock = *memBlock_i;
 	node_t* newNode = *newNode_i; 
+
+	//Checking to see if there is enough space for a new node (created when we split)
+	//If not, return our previous block with a little extra space
+	//
+	//Currently if we remove this, more tests pass
 	if (memBlock->size <= (int) (size + sizeof(node_t)))
+	{
+		fprintf(stderr, "not enough room for new node");
+		*newNode_i = memBlock;
 		return;
+	}
 
 	newNode = (node_t*) (memBlock + sizeof(node_t) + size);
 
@@ -130,8 +140,9 @@ split(node_t** memBlock_i, node_t** newNode_i, int size)
 	newNode->size = memBlock->size - size - (int) sizeof(node_t); //Set the shard size
 	memBlock->size = size; //Update the selection node size.
 	
-	*memBlock_i = memBlock;
-	*newNode_i = newNode;
+	//Switch these due to implementation in mem_alloc where we use newNode as our allocated node
+	*memBlock_i = newNode;
+	*newNode_i = memBlock;
 	//fprintf(stderr, "%d\n", newNode->size);
 }
 
@@ -188,18 +199,23 @@ void
 
   byteAlligned = byteAlligned * 8;
 
-	requestedNodeSize = byteAlligned + (int) sizeof(header_t);
+	//Requested Node Size is the total bytes we need + the amount of space we need
+	//for the header. This is the total amount of memory we need. Because the free
+	//memory is already storing information in the node, we need to subtract the size
+	//of the free node
+	requestedNodeSize = byteAlligned + (int) sizeof(header_t) - (int) sizeof(node_t);
 	//fprintf(stderr, "%d\n", requestedNodeSize);
 	if (requestedNodeSize > Mem_Available())
 		return NULL;
-	//fprintf(stderr, "Got here\n");
+	//fprintf(stderr, "size of header: %d\n", (int) sizeof(header_t));
 	tmp = head;
 	do 
 	{
 		if (tmp->size > requestedNodeSize)
 		{
-			//Mem_Dump();
+			//fprintf(stderr, "size Requested: %d tmp size: %d mem avail: %d\n", requestedNodeSize, tmp->size, Mem_Available());
 			split(&tmp, &newNode, requestedNodeSize); //Sets new Node to the new split node.
+			//fprintf(stderr, "split returned\n");
 			break;
 			//fprintf(stderr, "%d\n", newNode->size);
 			//Mem_Dump();
@@ -211,12 +227,14 @@ void
 		}
 		tmp = tmp->next;
 	} while(tmp != NULL);
-		
+	
+	//fprintf(stderr, "before last null check");	
 	if(newNode == NULL)
 	{
 		return NULL; //No free space found.
 	}
-
+	//fprintf(stderr, "Past last null check");	
+	node_t* before = head;
 	/* Remove the node from the free list and convert it. */
 	removeFreeNode(newNode);
 
@@ -225,7 +243,7 @@ void
 	allocNode->magic = MAGIC_CONST;
 
 	freeSpaceAddr = (void*) (allocNode + (int) sizeof(header_t));
-	//fprintf(stderr, "%p\n", freeSpaceAddr);
+	fprintf(stderr, "malloc: %p head: %p prevHead: %p\n", freeSpaceAddr, head, before);
 	return freeSpaceAddr;
 }
 
@@ -238,9 +256,12 @@ Mem_Free(void *ptr)
 	node_t* prev = NULL;
 	node_t* newNode = NULL;
 
+	fprintf(stderr, "start of free\n");
 	if (ptr == NULL)
 		return -1;
+	fprintf(stderr, "ptr not null");
 	header = (header_t *) (ptr - sizeof(header_t));
+	fprintf(stderr, "casts correctly");
 	if (header->magic != MAGIC_CONST)
 		return -1;
 	
@@ -287,7 +308,7 @@ Mem_Available()
 
 	while (tmp != NULL)
 	{
-		freeSpace += tmp->size;
+		freeSpace += tmp->size + 16;
 		tmp = tmp->next;
 	}
 
