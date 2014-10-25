@@ -44,7 +44,6 @@ removeFreeNode(node_t* freeNode)
 	else
 	{
 		/* Update the global head pointer. This is the start. */
-		//fprintf(stderr, "updating global head pointer\n");
 		head = nextNode;
 	}
 
@@ -118,7 +117,6 @@ split(node_t** memBlock_i, node_t** newNode_i, int size)
 	//Currently if we remove this, more tests pass
 	if (memBlock->size <= (int) (size + sizeof(node_t)))
 	{
-		fprintf(stderr, "not enough room for new node");
 		*newNode_i = memBlock;
 		return;
 	}
@@ -177,7 +175,6 @@ Mem_Init(int sizeOfRegion)
 	head = (node_t*) ptr;
 	
 	head->size = memToInit - sizeof(node_t);
-	//fprintf(stderr, "%d\n", head->size);
 	//	head->next = NULL;
 	//head->prev = NULL;
 
@@ -206,21 +203,15 @@ void
 	//memory is already storing information in the node, we need to subtract the size
 	//of the free node
 	requestedNodeSize = byteAlligned + (int) sizeof(header_t) - (int) sizeof(node_t);
-	//fprintf(stderr, "%d\n", requestedNodeSize);
 	if (requestedNodeSize > Mem_Available())
 		return NULL;
-	printf("size of header: %d\n", (int) sizeof(header_t));
 	tmp = head;
 	do 
 	{
 		if (tmp->size > requestedNodeSize)
 		{
-			printf("size Requested: %d tmp size: %d mem avail: %d\n", requestedNodeSize, tmp->size, Mem_Available());
 			split(&tmp, &newNode, requestedNodeSize); //Sets new Node to the new split node.
-			printf("split returned\n");
 			break;
-			//fprintf(stderr, "%d\n", newNode->size);
-			//Mem_Dump();
 		}
 		else if (tmp->size == requestedNodeSize)
 		{
@@ -230,13 +221,10 @@ void
 		tmp = tmp->next;
 	} while(tmp != NULL);
 	
-	//fprintf(stderr, "before last null check");	
 	if(newNode == NULL)
 	{
 		return NULL; //No free space found.
 	}
-	//fprintf(stderr, "Past last null check");	
-	//node_t* before = head;
 	/* Remove the node from the free list and convert it. */
 	removeFreeNode(newNode);
 
@@ -245,7 +233,6 @@ void
 	allocNode->magic = MAGIC_CONST;
 
 	freeSpaceAddr = (void*) (allocNode + (int) sizeof(header_t));
-	//fprintf(stderr, "h: %p pH: %p n: %p\n", head, before, tmp);
 	return freeSpaceAddr;
 }
 
@@ -258,12 +245,9 @@ Mem_Free(void *ptr)
 	node_t* prev = NULL;
 	node_t* newNode = NULL;
 
-	fprintf(stderr, "start of free\n");
 	if (ptr == NULL)
 		return -1;
-	fprintf(stderr, "ptr not null");
 	header = (header_t *) (ptr - sizeof(header_t));
-	fprintf(stderr, "casts correctly");
 	if (header->magic != MAGIC_CONST)
 		return -1;
 	
